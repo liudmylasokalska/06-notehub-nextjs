@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import SearchBox from "@/components/SearchBox/SearchBox";
+import { useDebounce } from "use-debounce";
 import { fetchNotes, FetchNotesResponse } from "@/lib/api";
+import SearchBox from "@/components/SearchBox/SearchBox";
 import Pagination from "@/components/Pagination/Pagination";
 import NoteForm from "@/components/NoteForm/NoteForm";
 import Modal from "@/components/Modal/Modal";
-import { useDebounce } from "use-debounce";
 import NoteList from "@/components/NoteList/NoteList";
 import Loader from "../loading";
 
@@ -20,9 +20,9 @@ export default function NotesClient() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data, isFetching, isError, error } = useQuery<FetchNotesResponse>({
-    queryKey: ["notes", debouncedSearch, page],
+    queryKey: ["notes", { search: debouncedSearch, page }],
     queryFn: () => fetchNotes(debouncedSearch, page),
-    placeholderData: (prev) => prev,
+    placeholderData: (prevData) => prevData,
   });
 
   const handleSearchChange = (value: string) => {
@@ -34,19 +34,14 @@ export default function NotesClient() {
     setPage(selectedPage);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-  };
-
-  const openModal = () => {
-    setIsModalOpen(true);
-  };
+  const closeModal = () => setIsModalOpen(false);
+  const openModal = () => setIsModalOpen(true);
 
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
         <SearchBox value={search} onChange={handleSearchChange} />
-        {data && data.totalPages > 1 && (
+        {data?.totalPages && data.totalPages > 1 && (
           <Pagination
             pageCount={data.totalPages}
             currentPage={page}
@@ -60,16 +55,16 @@ export default function NotesClient() {
 
       {isFetching && <Loader />}
       {isError && <p>Error: {(error as Error).message}</p>}
-      {data && data.notes.length === 0 && !isFetching && (
+      {data?.notes.length === 0 && !isFetching && (
         <p className={css.notfound}>
           {debouncedSearch
             ? `No notes found for "${debouncedSearch}"`
             : "No notes found"}
         </p>
       )}
-      {data && data.notes && data.notes.length > 0 && (
-        <NoteList notes={data.notes} />
-      )}
+
+      {data?.notes && data.notes.length > 0 && <NoteList notes={data.notes} />}
+
       {isModalOpen && (
         <Modal onClose={closeModal}>
           <NoteForm onCancel={closeModal} />
